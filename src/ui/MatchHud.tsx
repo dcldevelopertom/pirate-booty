@@ -113,7 +113,11 @@ export async function beginDockOut(): Promise<void> {
 }
 
 export function setupMatchHud(): void {
-  room.send('playerAskStats', {})
+  const ask = () => room.send('playerAskStats', {})
+  if (room.isReady()) ask()
+  room.onReady((ready) => {
+    if (ready) ask()
+  })
   room.onMessage('lobbyUpdate', (data) => {
     if (stage === 'loading' || stage === 'countdown' || stage === 'playing' || stage === 'finished' || stage === 'results' || stage === 'out' || stage === 'dying')
       return

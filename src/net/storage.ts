@@ -134,6 +134,30 @@ export async function markTutorialSeen(address: string): Promise<void> {
   await Storage.player.set(address, TUTORIAL, 1)
 }
 
+export async function clearTutorialSeen(address?: string): Promise<number> {
+  const seen = await listTutorialSeen()
+  if (address) {
+    const key = address.toLowerCase()
+    const next = seen.filter((a) => a !== key)
+    await sceneSet(TUTORIAL_SEEN, next)
+    try {
+      await Storage.player.delete(address, TUTORIAL)
+    } catch {
+      // player key may not exist
+    }
+    return seen.length - next.length
+  }
+  await sceneSet(TUTORIAL_SEEN, [])
+  for (const a of seen) {
+    try {
+      await Storage.player.delete(a, TUTORIAL)
+    } catch {
+      // player key may not exist
+    }
+  }
+  return seen.length
+}
+
 export async function setTutorialForce(on: boolean): Promise<boolean> {
   return sceneSet(TUTORIAL_FORCE, on)
 }

@@ -18,6 +18,8 @@ let pending = false
 let force = false
 let seenAlready = false
 let offerReady = false
+let offerWait = 0
+const OFFER_FALLBACK_SECONDS = 3
 
 export function isTutorialOpen(): boolean {
   return open
@@ -34,8 +36,9 @@ export function isTutorialPending(): boolean {
 export function setupTutorial(): void {
   setSplashEndHandler(tryBeginTutorial)
   room.onMessage('tutorialOffer', (data) => {
-    offerReady = true
     force = data.force
+    if (offerReady) return
+    offerReady = true
     if (!data.show) {
       seenAlready = true
       pending = false
@@ -45,13 +48,24 @@ export function setupTutorial(): void {
     pending = true
     tryBeginTutorial()
   })
-  engine.addSystem(() => {
+  engine.addSystem((dt) => {
     if (open) {
       lockTutorial()
       if (getCamFollow() !== 'tutorial') viewTutorial()
       return
     }
-    if (!offerReady && !isSplashVisible()) lockAllInputs()
+    if (isSplashVisible() || offerReady) return
+    lockAllInputs()
+    const stepDt = dt > 1 ? dt / 1000 : dt
+    const before = offerWait
+    offerWait += stepDt
+    if (Math.floor(offerWait) !== Math.floor(before) && room.isReady()) {
+      room.send('playerAskStats', {})
+    }
+    if (offerWait < OFFER_FALLBACK_SECONDS) return
+    pending = true
+    offerReady = true
+    tryBeginTutorial()
   }, 50, 'tutorial-hold')
 }
 
@@ -61,6 +75,7 @@ export function tryBeginTutorial(): void {
     lockAllInputs()
     return
   }
+  if (open) return
   if (!pending) {
     unlockToGameplay()
     if (seenAlready) armLeaderboardPointer()

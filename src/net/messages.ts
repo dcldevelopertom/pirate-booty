@@ -475,6 +475,10 @@ export const Messages = {
   gmSetTutorialForce: Schemas.Map({
     on: Schemas.Boolean
   }),
+  gmClearTutorial: Schemas.Map({
+    scope: Schemas.String,
+    address: Schemas.Optional(Schemas.String)
+  }),
   gmBumpObstacles: Schemas.Map({
     delta: Schemas.Int
   }),

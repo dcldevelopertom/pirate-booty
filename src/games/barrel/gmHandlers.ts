@@ -1,4 +1,5 @@
 import { isServer } from '@dcl/sdk/network'
+import { isAdmin } from '../../net/admins'
 import { broadcastLeaderboard, room } from '../../net/messages'
 import {
   deletePlayer,
@@ -15,6 +16,7 @@ import {
   snapshotBoard,
   snapshotPlayers,
   setTutorialForce,
+  clearTutorialSeen,
   setMobileOnly
 } from '../../net/storage'
 import {
@@ -147,6 +149,31 @@ export function initGmHandlers(): void {
     if (!allow(context) || !context) return
     const ok = await setTutorialForce(data.on)
     reply(context.from, ok, data.on ? 'tutorial always ON' : 'tutorial first-time only')
+  })
+
+  room.onMessage('gmClearTutorial', async (data, context) => {
+    if (!allow(context) || !context) return
+    const from = context.from
+    try {
+      if (data.scope === 'self') {
+        const n = await clearTutorialSeen(from)
+        reply(from, true, n > 0 ? 'your tutorial reset' : 'you were not marked seen')
+        return
+      }
+      if (data.scope === 'address' && data.address) {
+        const n = await clearTutorialSeen(data.address)
+        reply(from, true, n > 0 ? `tutorial reset ${short(data.address)}` : `${short(data.address)} was not marked seen`)
+        return
+      }
+      if (data.scope === 'all') {
+        const n = await clearTutorialSeen()
+        reply(from, true, `cleared tutorial seen for ${n} wallets`)
+        return
+      }
+      reply(from, false, `unknown scope ${data.scope}`)
+    } catch (e) {
+      reply(from, false, String(e))
+    }
   })
 
   room.onMessage('gmBumpObstacles', (data, context) => {
@@ -285,7 +312,7 @@ function short(address: string): string {
 }
 
 function allow(context: { from: string } | undefined): boolean {
-  return !!context
+  return !!context?.from && isAdmin(context.from)
 }
 
 function reply(to: string, ok: boolean, detail: string): void {

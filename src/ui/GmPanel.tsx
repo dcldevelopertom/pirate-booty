@@ -4,6 +4,7 @@ import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { copyToClipboard } from '~system/RestrictedActions'
 import { leaveGameView, spectateLane } from '../games/shared/GameView'
 import { LANE } from '../config'
+import { isAdmin } from '../net/admins'
 import { room } from '../net/messages'
 import { GameInfo, LaneState, getLanePhase, isLaneLoaded, readGames, readHubBots, readNeedMoreThanOne } from '../net/schemas'
 import { isDeckHideMeshVisible, setDeckHideMeshVisible } from '../world/DeckHide'
@@ -23,6 +24,7 @@ let open = false
 let tab: GmTab = 'general'
 let storageLine = ''
 let confirmResetAll = false
+let confirmClearTutorial = false
 let localAddress = ''
 let selectedLane = 0
 let selectedGameId = 0
@@ -56,7 +58,7 @@ export function gmUi() {
 }
 
 function canShowGm(): boolean {
-  return true
+  return isAdmin(localAddress)
 }
 
 function currentLaneState() {
@@ -308,6 +310,20 @@ function generalTab() {
             const next = !(tutorialForceLocal ?? isTutorialForce())
             tutorialForceLocal = next
             room.send('gmSetTutorialForce', { on: next })
+          }
+        }
+      ])}
+      {rowButtons([
+        { label: 'Reset my tutorial', onClick: () => room.send('gmClearTutorial', { scope: 'self' }) },
+        {
+          label: confirmClearTutorial ? 'Confirm ALL' : 'Clear ALL tutorials',
+          onClick: () => {
+            if (!confirmClearTutorial) {
+              confirmClearTutorial = true
+              return
+            }
+            confirmClearTutorial = false
+            room.send('gmClearTutorial', { scope: 'all' })
           }
         }
       ])}

@@ -74,18 +74,29 @@ export function initMatchFlow(): void {
 
   room.onMessage('playerAskStats', async (_data, context) => {
     if (!context?.from) return
+    const address = context.from
     try {
-      const stats = await getPlayerStats(context.from)
-      room.send('myStats', stats, { to: [context.from] })
+      const offer = await shouldOfferTutorial(address)
+      room.send('tutorialOffer', offer, { to: [address] })
+    } catch (e) {
+      console.log('[SERVER] tutorial offer failed', e)
+      room.send('tutorialOffer', { show: true, force: false }, { to: [address] })
+    }
+    try {
+      room.send('mobileOnlyState', { on: await getMobileOnly() }, { to: [address] })
+    } catch (e) {
+      console.log('[SERVER] mobileOnly failed', e)
+      room.send('mobileOnlyState', { on: false }, { to: [address] })
+    }
+    try {
+      const stats = await getPlayerStats(address)
+      room.send('myStats', stats, { to: [address] })
       const board = await getLeaderboard()
       room.send(
         'leaderboard',
         { rows: board.map((r) => ({ address: r.address, name: r.name, coins: r.coins, wins: r.wins })) },
-        { to: [context.from] }
+        { to: [address] }
       )
-      const offer = await shouldOfferTutorial(context.from)
-      room.send('tutorialOffer', offer, { to: [context.from] })
-      room.send('mobileOnlyState', { on: await getMobileOnly() }, { to: [context.from] })
     } catch (e) {
       console.log('[SERVER] stats failed', e)
     }
